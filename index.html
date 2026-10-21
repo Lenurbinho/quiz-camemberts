@@ -102,7 +102,7 @@ const THEMES=[
  {id:'pol',name:'Culture générale Police nationale'}];
 const N=THEMES.length;
 const LEVELS={1:{name:'Normal',pts:1},2:{name:'Difficile',pts:2},3:{name:'Maître',pts:3}};
-const DUR=20000, REVEAL_AUTO=12000;
+const DUR=30000, REVEAL_AUTO=12000;
 // [question, bonne réponse, mauvaise, mauvaise, mauvaise]
 const Q={
 geo:{1:[
@@ -534,7 +534,7 @@ function viewHome(){
     ${statusLine()}
   </section>
   <section class="panel"><h3>Règles</h3>
-    <p>Le premier joueur entré choisit le niveau, fixe pour toute la partie : Normal (1 pt), Difficile (2 pts) ou Maître (3 pts), avec des questions très pointues. 20 secondes par question. Chaque bonne réponse colore le camembert du thème. Le plus de points à la fin gagne. Une source s'affiche après chaque question pour vérifier.</p></section>`;
+    <p>Le premier joueur entré choisit le niveau, fixe pour toute la partie : Normal (1 pt), Difficile (2 pts) ou Maître (3 pts), avec des questions très pointues. 30 secondes par question. Chaque bonne réponse colore le camembert du thème. Le plus de points à la fin gagne. Une source s'affiche après chaque question pour vérifier.</p></section>`;
 }
 function viewLobby(){
   const host=me.role==='host';
