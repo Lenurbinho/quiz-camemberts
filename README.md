@@ -18,6 +18,6 @@ L'animateur doit garder la page ouverte pendant toute la partie : c'est son tél
 
 - 7 thèmes : Géographie, Histoire, Sciences & Nature, Arts & Littérature, Sport & Loisirs, Divertissement, Culture générale Police nationale.
 - 3 niveaux : Normal (1 pt), Difficile (2 pts), Maître (3 pts).
-- 224 questions, chacune avec une source vérifiable.
+- 476 questions, chacune avec une source vérifiable.
 
 La connexion entre téléphones passe par [PeerJS](https://peerjs.com/), un service gratuit.
