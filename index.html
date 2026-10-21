@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Quiz des Camemberts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Figtree:wght@400;600;800&display=swap">
+<style>
+/* Layout : une colonne façon plateau de jeu ; l'animateur pilote, tout le monde répond en même temps */
+:root{
+  --bg:#E9EEF3; --surface:#FFFFFF; --ink:#16233A; --muted:#5B6B82; --line:#CCD6E2; --track:#D5DEE8;
+  --accent:#16233A; --on-accent:#FFFFFF; --ok:#1E9A5C; --ko:#D2363F;
+  --geo:#2F6FDB; --hist:#E2AC0E; --sci:#22A06B; --arts:#9A5B34; --sport:#EE7417; --div:#D9439A; --pol:#24346E;
+  --display:"Lilita One","Arial Rounded MT Bold","Trebuchet MS",sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111827; --surface:#1B2537; --ink:#EEF2F8; --muted:#9AA8BD; --line:#2D3A50; --track:#2A3549;
+  --accent:#EEF2F8; --on-accent:#111827; --ok:#38C17D; --ko:#F0606A;
+  --geo:#5A8FF0; --hist:#F2C232; --sci:#3BC086; --arts:#C07D52; --sport:#F68D3A; --div:#EC66B2; --pol:#8C9FE6; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111827; --surface:#1B2537; --ink:#EEF2F8; --muted:#9AA8BD; --line:#2D3A50; --track:#2A3549;
+  --accent:#EEF2F8; --on-accent:#111827; --ok:#38C17D; --ko:#F0606A;
+  --geo:#5A8FF0; --hist:#F2C232; --sci:#3BC086; --arts:#C07D52; --sport:#F68D3A; --div:#EC66B2; --pol:#8C9FE6; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 32px}
+.wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-size:2.2rem;line-height:1.05}
+h2{font-size:1.45rem}
+p{margin:0}
+.muted{color:var(--muted)}
+.label{font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible,input:focus-visible{outline:3px solid var(--geo);outline-offset:2px}
+.btn{background:var(--accent);color:var(--on-accent);font-weight:800;font-size:1.05rem;border-radius:14px;padding:14px 18px;width:100%}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--line)}
+.btn:disabled{opacity:.4;cursor:default}
+.panel{background:var(--surface);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px}
+input[type=text]{font:inherit;font-size:1.05rem;width:100%;padding:12px 14px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink)}
+.field{display:flex;flex-direction:column;gap:6px}
+.row{display:flex;gap:10px;align-items:center}
+.code{font-family:var(--display);font-size:1.6rem;letter-spacing:.18em;text-transform:uppercase}
+.seg{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:6px;background:var(--bg);padding:4px;border-radius:12px}
+.seg button{padding:10px 4px;border-radius:9px;font-weight:800;font-size:.9rem}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+.status{display:flex;align-items:center;gap:8px;font-size:.88rem;font-weight:600;color:var(--muted)}
+.status i{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.status.on i{background:var(--ok)}
+.hero{display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center}
+.wheel{width:130px;height:130px;display:block}
+.wheel.big{width:180px;height:180px}
+.players{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.players li{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:12px;padding:10px 12px;font-weight:600}
+.players .rk{font-family:var(--display);width:24px;text-align:center;color:var(--muted)}
+.players .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.players .pt{font-family:var(--display);font-variant-numeric:tabular-nums}
+.players .tag{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.players .mark{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:.8rem;font-weight:800;color:#fff;background:var(--track);flex:none}
+.players .mark.ok{background:var(--ok)}.players .mark.ko{background:var(--ko)}
+.players li.me{outline:2px solid var(--line)}
+.topbar{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.score{font-family:var(--display);font-size:1.8rem;line-height:1;font-variant-numeric:tabular-nums}
+.qhead{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{border-radius:30px;padding:5px 12px;font-weight:800;font-size:.82rem;background:var(--c,var(--track));color:#fff}
+.chip.plain{background:var(--track);color:var(--ink)}
+.qtext{font-size:1.3rem;font-weight:800;line-height:1.3}
+.timer{height:8px;border-radius:8px;background:var(--track);overflow:hidden}
+.timer i{display:block;height:100%;width:100%;background:var(--c);transform-origin:left;transform:scaleX(var(--k,1))}
+.answers{display:flex;flex-direction:column;gap:10px}
+.ans{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:14px 16px;text-align:left;font-weight:600;font-size:1.02rem;display:flex;gap:12px;align-items:center}
+.ans .k{font-family:var(--display);width:28px;height:28px;border-radius:50%;background:var(--track);display:grid;place-items:center;flex:none;font-size:.95rem}
+.ans.pick{border-color:var(--ink)}
+.ans.pick .k{background:var(--ink);color:var(--surface)}
+.ans.good{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,var(--surface))}
+.ans.good .k{background:var(--ok);color:#fff}
+.ans.bad{border-color:var(--ko);background:color-mix(in srgb,var(--ko) 14%,var(--surface))}
+.ans.bad .k{background:var(--ko);color:#fff}
+.ans:disabled{cursor:default}
+.verdict{border-radius:16px;padding:14px 16px;font-weight:800;display:flex;flex-direction:column;gap:4px}
+.verdict.ok{background:color-mix(in srgb,var(--ok) 16%,var(--surface));color:var(--ok)}
+.verdict.ko{background:color-mix(in srgb,var(--ko) 16%,var(--surface));color:var(--ko)}
+.verdict span{color:var(--ink);font-weight:600}
+.src{font-size:.85rem;color:var(--muted)!important}
+.src a{color:inherit}
+.wait{text-align:center;font-weight:600;color:var(--muted)}
+.center{text-align:center}
+.link{color:var(--muted);text-decoration:underline;font-weight:600;font-size:.9rem;align-self:center;padding:6px}
+.podium{font-family:var(--display);font-size:1.25rem}
+</style>
+
+</head><body>
+<div class="wrap" id="app"></div>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</body></html>
+
+<script>
+const THEMES=[
+ {id:'geo',name:'Géographie'},{id:'hist',name:'Histoire'},{id:'sci',name:'Sciences & Nature'},
+ {id:'arts',name:'Arts & Littérature'},{id:'sport',name:'Sport & Loisirs'},{id:'div',name:'Divertissement'},
+ {id:'pol',name:'Culture générale Police nationale'}];
+const N=THEMES.length;
+const LEVELS={1:{name:'Normal',pts:1},2:{name:'Difficile',pts:2},3:{name:'Maître',pts:3}};
+const DUR=20000, REVEAL_AUTO=12000;
+// [question, bonne réponse, mauvaise, mauvaise, mauvaise]
+const Q={
+geo:{1:[
+["Quelle est la capitale de l'Italie ?","Rome","Milan","Naples","Florence","Rome"],
+["Quel est le plus long fleuve de France ?","La Loire","La Seine","Le Rhône","La Garonne","Loire (fleuve)"],
+["Sur quel continent se trouve l'Égypte ?","Afrique","Asie","Europe","Océanie","Égypte"],
+["Quel océan borde la côte ouest de la France ?","L'Atlantique","Le Pacifique","L'océan Indien","L'Arctique","Océan Atlantique"],
+["Quelle est la capitale de l'Espagne ?","Madrid","Barcelone","Séville","Valence","Madrid"],
+["Quel est le plus haut sommet des Alpes ?","Le mont Blanc","Le Cervin","Le mont Rose","La Meije","Mont Blanc"],
+["Dans quel pays se trouve la ville de Montréal ?","Canada","États-Unis","Belgique","Suisse","Montréal"],
+["Quel pays a la forme d'une botte ?","Italie","Grèce","Portugal","Croatie","Italie"]],
+2:[
+["Quelle est la capitale de l'Australie ?","Canberra","Sydney","Melbourne","Perth","Canberra"],
+["Quel est le pays le plus peuplé d'Afrique ?","Nigeria","Égypte","Éthiopie","Afrique du Sud","Démographie de l'Afrique"],
+["Quel détroit sépare l'Europe de l'Afrique ?","Gibraltar","Le Bosphore","Messine","Ormuz","Détroit de Gibraltar"],
+["Dans quel département se trouve Saint-Malo ?","Ille-et-Vilaine","Côtes-d'Armor","Finistère","Morbihan","Saint-Malo"],
+["Quel est le plus grand désert chaud du monde ?","Le Sahara","Le Gobi","Le Kalahari","L'Atacama","Sahara"],
+["Quelle est la capitale du Canada ?","Ottawa","Toronto","Montréal","Vancouver","Ottawa"],
+["Quel fleuve traverse Budapest ?","Le Danube","Le Rhin","La Vistule","L'Elbe","Budapest"],
+["Combien de pays ont une frontière terrestre avec la France métropolitaine ?","8","6","7","9","Frontières de la France"]],
+3:[
+["Quelle est la capitale du Kazakhstan ?","Astana","Almaty","Bichkek","Tachkent","Astana"],
+["Quel est le lac le plus profond du monde ?","Le Baïkal","Le Tanganyika","Le lac Supérieur","Le Titicaca","Lac Baïkal"],
+["Quel pays compte le plus de fuseaux horaires, territoires d'outre-mer compris ?","France","Russie","États-Unis","Royaume-Uni","Fuseau horaire"],
+["Quelle est la capitale de la Mongolie ?","Oulan-Bator","Astana","Thimphou","Katmandou","Oulan-Bator"],
+["Quel est le point culminant de l'Afrique ?","Le Kilimandjaro","Le mont Kenya","Le Ras Dashen","Le mont Stanley","Kilimandjaro"],
+["Quel pays est enclavé entre la Bolivie, l'Argentine et le Brésil ?","Paraguay","Uruguay","Chili","Pérou","Paraguay"],
+["Sur quelle île se trouve Palerme ?","La Sicile","La Sardaigne","La Corse","Malte","Palerme"],
+["Quelle est la capitale du Burkina Faso ?","Ouagadougou","Bamako","Niamey","Lomé","Ouagadougou"]]},
+hist:{1:[
+["En quelle année a eu lieu la prise de la Bastille ?","1789","1792","1776","1804","Prise de la Bastille"],
+["Quel roi était surnommé le Roi-Soleil ?","Louis XIV","Louis XVI","François Ier","Henri IV","Louis XIV"],
+["Quel empereur français est mort en exil à Sainte-Hélène ?","Napoléon Ier","Napoléon III","Charlemagne","Louis-Philippe","Napoléon Ier"],
+["En quelle année s'est terminée la Seconde Guerre mondiale ?","1945","1944","1918","1950","Seconde Guerre mondiale"],
+["Qui a été le premier homme à marcher sur la Lune ?","Neil Armstrong","Buzz Aldrin","Youri Gagarine","Michael Collins","Neil Armstrong"],
+["Quelle civilisation a construit les pyramides de Gizeh ?","Les Égyptiens","Les Romains","Les Mayas","Les Grecs","Pyramides de Gizeh"],
+["Quel mur est tombé en 1989 ?","Le mur de Berlin","La Grande Muraille","Le mur d'Hadrien","Le mur des Lamentations","Mur de Berlin"],
+["Qui a délivré Orléans assiégée en 1429 ?","Jeanne d'Arc","Catherine de Médicis","Aliénor d'Aquitaine","Marie-Antoinette","Siège d'Orléans (1428-1429)"]],
+2:[
+["En quelle année a eu lieu le débarquement en Normandie ?","1944","1943","1942","1945","Débarquement de Normandie"],
+["Quel roi a signé l'édit de Nantes ?","Henri IV","Louis XIII","François Ier","Louis XIV","Édit de Nantes"],
+["Qui fut le premier président de la Ve République ?","Charles de Gaulle","Georges Pompidou","René Coty","Vincent Auriol","Charles de Gaulle"],
+["En quelle année Christophe Colomb atteint-il l'Amérique ?","1492","1515","1453","1498","Christophe Colomb"],
+["Quelle victoire de 1515 est associée à François Ier ?","Marignan","Pavie","Azincourt","Austerlitz","Bataille de Marignan"],
+["Quel explorateur malouin a remonté le Saint-Laurent ?","Jacques Cartier","Samuel de Champlain","La Pérouse","Bougainville","Jacques Cartier"],
+["Quelle ville était la capitale de l'Empire byzantin ?","Constantinople","Rome","Athènes","Alexandrie","Constantinople"],
+["En quelle année la peine de mort a-t-elle été abolie en France ?","1981","1974","1968","1986","Abolition de la peine de mort en France"]],
+3:[
+["Quel traité a mis fin à la Première Guerre mondiale avec l'Allemagne ?","Le traité de Versailles","Le traité de Trianon","Le traité de Brest-Litovsk","Le traité de Saint-Germain","Traité de Versailles"],
+["Quel pharaon a fait bâtir la plus grande pyramide de Gizeh ?","Khéops","Khéphren","Mykérinos","Ramsès II","Pyramide de Khéops"],
+["En quelle année Charlemagne a-t-il été couronné empereur ?","800","732","843","987","Charlemagne"],
+["Qui fut le célèbre ministre de la Police de Napoléon Ier ?","Joseph Fouché","Talleyrand","Cambacérès","Vidocq","Joseph Fouché"],
+["Quelle reine a régné sur l'Angleterre de 1558 à 1603 ?","Élisabeth Ire","Marie Stuart","Victoria","Anne","Élisabeth Ire"],
+["En quelle année a eu lieu la bataille d'Hastings ?","1066","1215","987","1100","Bataille d'Hastings"],
+["Quel général carthaginois a franchi les Alpes avec des éléphants ?","Hannibal","Hamilcar","Scipion","Jugurtha","Hannibal Barca"],
+["Quelle loi a été votée en France en 1905 ?","La séparation des Églises et de l'État","Le droit de vote des femmes","Les congés payés","L'école gratuite et obligatoire","Loi de séparation des Églises et de l'État"]]},
+sci:{1:[
+["Quelle planète est surnommée la planète rouge ?","Mars","Vénus","Jupiter","Mercure","Mars (planète)"],
+["Combien de pattes possède une araignée ?","8","6","10","12","Araignée"],
+["Quel gaz les plantes absorbent-elles pour la photosynthèse ?","Le dioxyde de carbone","L'oxygène","L'azote","L'hélium","Photosynthèse"],
+["Quel est le plus grand animal du monde ?","La baleine bleue","L'éléphant d'Afrique","Le cachalot","La girafe","Baleine bleue"],
+["À quelle température l'eau bout-elle au niveau de la mer ?","100 °C","90 °C","120 °C","80 °C","Point d'ébullition"],
+["Quel organe pompe le sang dans le corps ?","Le cœur","Le foie","Les poumons","Les reins","Cœur"],
+["Quelle est la formule chimique de l'eau ?","H₂O","CO₂","O₂","NaCl","Eau"],
+["Quelle est l'étoile la plus proche de la Terre ?","Le Soleil","Proxima du Centaure","Sirius","L'étoile polaire","Soleil"]],
+2:[
+["Quel est le symbole chimique de l'or ?","Au","Ag","Or","Fe","Or"],
+["Combien d'os compte le squelette d'un adulte ?","206","186","226","256","Squelette humain"],
+["Quelle est la plus grande planète du système solaire ?","Jupiter","Saturne","Neptune","Uranus","Jupiter (planète)"],
+["Qui a formulé la théorie de la relativité ?","Albert Einstein","Isaac Newton","Niels Bohr","Max Planck","Relativité restreinte"],
+["Quel est l'animal terrestre le plus rapide ?","Le guépard","Le lion","L'antilope","Le lévrier","Guépard"],
+["Combien de chromosomes compte une cellule humaine ?","46","23","44","48","Caryotype humain"],
+["Qui a découvert la pénicilline ?","Alexander Fleming","Louis Pasteur","Marie Curie","Robert Koch","Pénicilline"],
+["Quel métal est liquide à température ambiante ?","Le mercure","Le plomb","L'étain","L'aluminium","Mercure (chimie)"]],
+3:[
+["Quelle est la vitesse de la lumière dans le vide, environ ?","300 000 km/s","150 000 km/s","30 000 km/s","1 000 000 km/s","Vitesse de la lumière"],
+["Quel élément a pour numéro atomique 1 ?","L'hydrogène","L'hélium","Le lithium","Le carbone","Hydrogène"],
+["Quelle partie du cerveau gère surtout l'équilibre ?","Le cervelet","L'hypothalamus","Le lobe frontal","L'hippocampe","Cervelet"],
+["Quelle unité mesure la résistance électrique ?","L'ohm","Le volt","L'ampère","Le watt","Ohm"],
+["Combien de cœurs possède une pieuvre ?","3","1","2","4","Pieuvre"],
+["Quelle scientifique a reçu un prix Nobel de physique puis de chimie ?","Marie Curie","Irène Joliot-Curie","Rosalind Franklin","Lise Meitner","Marie Curie"],
+["Quel est l'os le plus long du corps humain ?","Le fémur","Le tibia","L'humérus","Le péroné","Fémur"],
+["Quelle planète tourne sur elle-même dans le sens inverse de la Terre ?","Vénus","Mars","Mercure","Neptune","Vénus (planète)"]]},
+arts:{1:[
+["Qui a peint La Joconde ?","Léonard de Vinci","Michel-Ange","Raphaël","Botticelli","La Joconde"],
+["Qui a écrit « Les Misérables » ?","Victor Hugo","Émile Zola","Alexandre Dumas","Honoré de Balzac","Les Misérables"],
+["Dans quel musée est exposée La Joconde ?","Le Louvre","Le musée d'Orsay","Le Centre Pompidou","L'Orangerie","La Joconde"],
+["Qui a écrit « Le Petit Prince » ?","Antoine de Saint-Exupéry","Jules Verne","Marcel Pagnol","Albert Camus","Le Petit Prince"],
+["Combien de mousquetaires dans le titre du roman de Dumas ?","Trois","Quatre","Deux","Cinq","Les Trois Mousquetaires"],
+["Quel auteur a imaginé le capitaine Nemo ?","Jules Verne","H. G. Wells","Victor Hugo","Alexandre Dumas","Capitaine Nemo"],
+["Quel peintre néerlandais s'est coupé une partie de l'oreille ?","Vincent van Gogh","Rembrandt","Vermeer","Mondrian","Vincent van Gogh"],
+["Quel fabuliste français a écrit « Le Corbeau et le Renard » ?","Jean de La Fontaine","Charles Perrault","Molière","Jean Racine","Le Corbeau et le Renard"]],
+2:[
+["Qui a écrit « Germinal » ?","Émile Zola","Victor Hugo","Gustave Flaubert","Guy de Maupassant","Germinal (roman)"],
+["Quel sculpteur a réalisé « Le Penseur » ?","Auguste Rodin","Camille Claudel","Michel-Ange","Bartholdi","Le Penseur"],
+["Qui a écrit « Le Malade imaginaire » ?","Molière","Racine","Corneille","Marivaux","Le Malade imaginaire"],
+["À quel mouvement artistique appartient Claude Monet ?","L'impressionnisme","Le cubisme","Le surréalisme","Le fauvisme","Claude Monet"],
+["Qui a peint « Guernica » ?","Pablo Picasso","Salvador Dalí","Joan Miró","Francisco de Goya","Guernica (Picasso)"],
+["Quel écrivain né à Saint-Malo repose sur l'îlot du Grand Bé ?","Chateaubriand","Lamartine","Victor Hugo","Lamennais","François-René de Chateaubriand"],
+["Qui a écrit « Madame Bovary » ?","Gustave Flaubert","Stendhal","Honoré de Balzac","Émile Zola","Madame Bovary"],
+["Qui a composé « Les Quatre Saisons » ?","Vivaldi","Bach","Mozart","Haendel","Les Quatre Saisons"]],
+3:[
+["Qui a écrit « À la recherche du temps perdu » ?","Marcel Proust","André Gide","Romain Rolland","Anatole France","À la recherche du temps perdu"],
+["Qui a peint « Le Radeau de la Méduse » ?","Théodore Géricault","Eugène Delacroix","Jacques-Louis David","Ingres","Le Radeau de La Méduse"],
+["Qui a écrit « Les Fleurs du mal » ?","Charles Baudelaire","Arthur Rimbaud","Paul Verlaine","Stéphane Mallarmé","Les Fleurs du mal"],
+["Quel architecte a conçu la pyramide du Louvre ?","Ieoh Ming Pei","Jean Nouvel","Renzo Piano","Le Corbusier","Pyramide du Louvre"],
+["Où se trouve la chapelle Sixtine ?","Au Vatican","À Florence","À Venise","À Milan","Chapelle Sixtine"],
+["Quel compositeur, devenu sourd, a écrit la Neuvième Symphonie ?","Beethoven","Mozart","Brahms","Schubert","Symphonie no 9 de Beethoven"],
+["Qui a peint « La Liberté guidant le peuple » ?","Eugène Delacroix","Théodore Géricault","Gustave Courbet","Édouard Manet","La Liberté guidant le peuple"],
+["Qui a écrit « Le Rouge et le Noir » ?","Stendhal","Balzac","Flaubert","Musset","Le Rouge et le Noir"]]},
+sport:{1:[
+["Combien de joueurs par équipe sur un terrain de football ?","11","10","12","9","Football"],
+["Quelle course cycliste se termine traditionnellement sur les Champs-Élysées ?","Le Tour de France","Paris-Roubaix","Le Giro","La Vuelta","Tour de France"],
+["Dans quel sport utilise-t-on un volant ?","Le badminton","Le tennis","Le squash","Le tennis de table","Badminton"],
+["Combien de joueurs par équipe sur un terrain de handball ?","7","6","5","11","Handball"],
+["Combien d'anneaux compte le drapeau olympique ?","5","4","6","7","Drapeau olympique"],
+["Quelle est la distance d'un marathon ?","42,195 km","40 km","42 km","45 km","Marathon"],
+["Aux échecs, quelle pièce peut sauter par-dessus les autres ?","Le cavalier","Le fou","La tour","La dame","Cavalier (échecs)"],
+["Quelle ville a accueilli les Jeux olympiques d'été 2024 ?","Paris","Los Angeles","Tokyo","Londres","Jeux olympiques d'été de 2024"]],
+2:[
+["Combien de haies sur un 110 m haies ?","10","8","12","11","110 mètres haies"],
+["Quel tournoi du Grand Chelem se joue sur terre battue ?","Roland-Garros","Wimbledon","L'US Open","L'Open d'Australie","Internationaux de France de tennis"],
+["Combien de points vaut un essai au rugby à XV ?","5","3","4","7","Rugby à XV"],
+["Combien d'épreuves compte un décathlon ?","10","7","8","12","Décathlon"],
+["Quel pays a remporté la Coupe du monde de football 2018 ?","France","Croatie","Brésil","Allemagne","Coupe du monde de football 2018"],
+["Dans quel sport s'illustre Teddy Riner ?","Le judo","La lutte","Le rugby","La boxe","Teddy Riner"],
+["Quelle est la longueur d'un tour de piste d'athlétisme, au couloir 1 ?","400 m","200 m","300 m","500 m","Piste d'athlétisme"],
+["Dans quel pays le golf moderne est-il considéré comme né ?","Écosse","Angleterre","Irlande","États-Unis","Golf"]],
+3:[
+["Qui détient le record du monde du 100 m en 9\"58 ?","Usain Bolt","Tyson Gay","Yohan Blake","Asafa Powell","Usain Bolt"],
+["Combien pèse le poids masculin en athlétisme ?","7,26 kg","6 kg","8 kg","5 kg","Lancer du poids"],
+["Quel athlète a gagné 4 médailles d'or aux Jeux de Berlin 1936 ?","Jesse Owens","Carl Lewis","Paavo Nurmi","Emil Zátopek","Jesse Owens"],
+["Combien de mètres mesure un terrain de handball en longueur ?","40 m","30 m","45 m","50 m","Handball"],
+["En quelle année ont eu lieu les premiers Jeux olympiques modernes ?","1896","1900","1888","1908","Jeux olympiques d'été de 1896"],
+["Quel perchiste français a battu en 2014 le record du monde de Bubka ?","Renaud Lavillenie","Jean Galfione","Pierre Quinon","Thierry Vigneron","Renaud Lavillenie"],
+["Quelle est la hauteur du filet de volley-ball masculin ?","2,43 m","2,24 m","2,50 m","2,35 m","Volley-ball"],
+["Combien d'épreuves compte l'heptathlon ?","7","5","6","8","Heptathlon"]]},
+div:{1:[
+["Combien de cordes possède une guitare classique ?","6","4","5","7","Guitare classique"],
+["De quel instrument jouait Jimi Hendrix ?","La guitare","La batterie","Le piano","Le saxophone","Jimi Hendrix"],
+["Dans quelle ville est remise la Palme d'or du cinéma ?","Cannes","Deauville","Venise","Berlin","Palme d'or"],
+["De quelle ville anglaise venaient les Beatles ?","Liverpool","Manchester","Londres","Birmingham","The Beatles"],
+["Combien de notes différentes compte une gamme majeure (sans l'octave) ?","7","5","8","12","Gamme majeure"],
+["Qui a réalisé « Les Dents de la mer » ?","Steven Spielberg","George Lucas","Ridley Scott","James Cameron","Les Dents de la mer"],
+["Dans quel jeu de société achète-t-on des rues pour y bâtir des hôtels ?","Le Monopoly","Le Cluedo","Le Risk","Le Scrabble","Monopoly"],
+["Quel héros de bande dessinée a un chien nommé Milou ?","Tintin","Spirou","Lucky Luke","Gaston Lagaffe","Milou"]],
+2:[
+["Qui a réalisé « Titanic » (1997) ?","James Cameron","Steven Spielberg","Ridley Scott","Martin Scorsese","Titanic (film, 1997)"],
+["Quel chanteur français était surnommé « le Taulier » ?","Johnny Hallyday","Eddy Mitchell","Jacques Dutronc","Michel Sardou","Johnny Hallyday"],
+["De quel pays vient le groupe ABBA ?","Suède","Norvège","Danemark","Finlande","ABBA"],
+["Quel film de 2011 réunit Omar Sy et François Cluzet ?","Intouchables","Bienvenue chez les Ch'tis","Le Dîner de cons","Les Visiteurs","Intouchables"],
+["Quelle chanteuse a rendu célèbre « La Vie en rose » ?","Édith Piaf","Barbara","Dalida","Juliette Gréco","La Vie en rose (chanson)"],
+["Combien de touches compte un piano standard ?","88","76","92","64","Piano"],
+["Qui a composé la musique de « Star Wars » ?","John Williams","Hans Zimmer","Ennio Morricone","Howard Shore","John Williams"],
+["Qui a créé Astérix avec Albert Uderzo ?","René Goscinny","Hergé","Morris","Franquin","René Goscinny"]],
+3:[
+["Qui a réalisé « Le Fabuleux Destin d'Amélie Poulain » ?","Jean-Pierre Jeunet","Luc Besson","Jacques Audiard","Cédric Klapisch","Le Fabuleux Destin d'Amélie Poulain"],
+["Quel film de 1927 est considéré comme le premier long métrage parlant ?","Le Chanteur de jazz","Metropolis","Les Temps modernes","Nosferatu","Le Chanteur de jazz"],
+["Quels frères ont organisé la première projection de cinéma payante en 1895 ?","Les frères Lumière","Les frères Pathé","Les frères Warner","Les frères Coen","Auguste et Louis Lumière"],
+["Quel compositeur français a écrit le « Boléro » ?","Maurice Ravel","Claude Debussy","Erik Satie","Camille Saint-Saëns","Boléro (Ravel)"],
+["Quel acteur a incarné James Bond le plus de fois dans la série officielle ?","Roger Moore","Sean Connery","Daniel Craig","Pierce Brosnan","James Bond"],
+["Quel opéra de Bizet se déroule à Séville ?","Carmen","Les Pêcheurs de perles","La Traviata","Tosca","Carmen (opéra)"],
+["En quelle année est sorti « Blanche-Neige », premier long métrage animé de Disney ?","1937","1928","1940","1950","Blanche-Neige et les Sept Nains (film, 1937)"],
+["De quel instrument jouait Miles Davis ?","La trompette","Le saxophone","La contrebasse","Le piano","Miles Davis"]]},
+pol:{1:[
+["Quel est le numéro d'appel d'urgence de police-secours ?","17","15","18","114","Numéro d'urgence"],
+["Quelle est la devise de la Police nationale ?","Pro patria vigilant","Honneur et Patrie","Force reste à la loi","Servir et protéger","https://fr.wikipedia.org/wiki/Police_nationale_(France)","Latin : « Pour la Patrie ils veillent »."],
+["De quel ministère dépend la Police nationale ?","L'Intérieur","La Justice","Les Armées","Les Finances","https://fr.wikipedia.org/wiki/Police_nationale_(France)"],
+["Quelle salle de concert parisienne a été attaquée le 13 novembre 2015 ?","Le Bataclan","L'Olympia","Le Zénith","La Cigale","Attentats du 13 novembre 2015 en France"],
+["Quel est le premier grade du corps d'encadrement et d'application ?","Gardien de la paix","Brigadier-chef","Major","Lieutenant","https://en.wikipedia.org/wiki/National_Police_(France)"],
+["Quelle unité d'intervention d'élite appartient à la Police nationale ?","Le RAID","Le GIGN","L'EPIGN","Le 1er RPIMa","https://en.wikipedia.org/wiki/RAID_(French_police_unit)","Le GIGN relève de la Gendarmerie nationale."],
+["En quel mois de 2015 a eu lieu l'attentat contre Charlie Hebdo ?","Janvier","Mars","Juillet","Novembre","https://fr.wikipedia.org/wiki/Ahmed_Merabet","Le 7 janvier 2015."],
+["Quelle ville a été frappée par un attentat au camion le 14 juillet 2016 ?","Nice","Marseille","Lyon","Toulouse","Attentat du 14 juillet 2016 à Nice"]],
+2:[
+["En quelle année la Sûreté nationale et la Préfecture de police ont-elles été unifiées dans la Police nationale ?","1966","1958","1972","1981","https://fr.wikipedia.org/wiki/Police_nationale_(France)","Loi n° 66-492 du 9 juillet 1966."],
+["En quelle année le RAID a-t-il été créé ?","1985","1974","1995","2002","https://en.wikipedia.org/wiki/RAID_(French_police_unit)","Premier chef : Ange Mancini."],
+["Quel policier du commissariat du 11e arrondissement a été tué le 7 janvier 2015, boulevard Richard-Lenoir ?","Ahmed Merabet","Xavier Jugelé","Jean-Baptiste Salvaing","Arnaud Beltrame","https://fr.wikipedia.org/wiki/Ahmed_Merabet"],
+["Quel policier a été tué sur les Champs-Élysées le 20 avril 2017 ?","Xavier Jugelé","Ahmed Merabet","Franck Brinsolaro","Jean-Baptiste Salvaing","https://en.wikipedia.org/wiki/April_2017_Champs-%C3%89lys%C3%A9es_attack","Promu capitaine et fait chevalier de la Légion d'honneur à titre posthume."],
+["Dans quelle ville de l'Essonne des policiers ont-ils été brûlés aux cocktails Molotov le 8 octobre 2016 ?","Viry-Châtillon","Massy","Évry","Corbeil-Essonnes","https://www.publicsenat.fr/actualites/politique/collomb-a-viry-chatillon-dimanche-soir-un-an-apres-l-attaque-de-policiers-78310","L'attaque a déclenché le mouvement des « policiers en colère »."],
+["Quel office a remplacé l'OCRTIS au 1er janvier 2020 ?","L'OFAST","L'OCLCTIC","L'OCRVP","L'OCLDI","https://www.senat.fr/rap/r19-337/r19-33710.html","Office anti-stupéfiants."],
+["Quelles unités ont donné l'assaut à l'Hyper Cacher le 9 janvier 2015 ?","Le RAID et la BRI","Le GIGN seul","Le GIGN et le RAID","La BRI seule","https://en.wikipedia.org/wiki/RAID_(French_police_unit)","Le même jour, le GIGN intervenait à Dammartin-en-Goële."],
+["Quel ministre a créé les « brigades du Tigre » en 1907 ?","Georges Clemenceau","Jean Jaurès","Aristide Briand","Raymond Poincaré","https://fr.wikipedia.org/wiki/Police_nationale_(France)","12 brigades régionales de police mobile, le 30 décembre 1907."]],
+3:[
+["En quelle année la Préfecture de police de Paris a-t-elle été créée ?","1800","1789","1815","1871","https://fr.wikipedia.org/wiki/Police_nationale_(France)","Loi du 28 pluviôse an VIII (17 février 1800)."],
+["Dans quelle commune un couple de fonctionnaires de police a-t-il été assassiné chez lui le 13 juin 2016 ?","Magnanville","Mantes-la-Jolie","Les Mureaux","Rambouillet","https://en.wikipedia.org/wiki/2016_Magnanville_stabbing","Jean-Baptiste Salvaing et Jessica Schneider. Le RAID et la BRI sont intervenus."],
+["Combien de fonctionnaires ont été tués lors de l'attaque de la préfecture de police le 3 octobre 2019 ?","4","2","3","6","https://fr.wikipedia.org/wiki/Attentat_de_la_pr%C3%A9fecture_de_police_de_Paris","Trois policiers et une agente administrative."],
+["Quelle était la fonction de Stéphanie Monfermé, tuée au commissariat de Rambouillet en 2021 ?","Agente administrative","Gardienne de la paix","Commissaire","Policière municipale","https://en.wikipedia.org/wiki/Rambouillet_stabbing","Elle travaillait dans l'administration policière depuis 28 ans."],
+["En quelle année est entré en vigueur le code de déontologie commun à la police et à la gendarmerie ?","2014","1986","2000","2020","https://www.interieur.gouv.fr/deontologie","Le 1er janvier 2014."],
+["À quelle date les directions départementales de la police nationale (DDPN) ont-elles été généralisées ?","1er janvier 2024","1er janvier 2020","1er janvier 2022","1er janvier 2018","https://www.senat.fr/rap/r24-816/r24-816-syn.pdf"],
+["Dans quelle commune l'ENSP forme-t-elle les commissaires de police ?","Saint-Cyr-au-Mont-d'Or","Cannes-Écluse","Nîmes","Sens","https://fr.wikipedia.org/wiki/Police_nationale_(France)","Le site de Cannes-Écluse forme les officiers."],
+["En quelle année les premières femmes gardiennes de la paix ont-elles été recrutées ?","1978","1958","1990","1945","https://fr.wikipedia.org/wiki/Police_nationale_(France)"]]}
+};
+
+
+// Niveau Maître : questions pointues [question, bonne réponse, 3 mauvaises, source, note]
+const MAITRE={
+geo:[
+["Quel est le plus petit pays d'Afrique continentale par la superficie ?","La Gambie","L'Eswatini","Djibouti","Le Lesotho","Gambie"],
+["Quelle est la capitale du Bhoutan ?","Thimphou","Paro","Punakha","Katmandou","Thimphou"],
+["Quel est le plus long fleuve d'Europe ?","La Volga","Le Danube","Le Dniepr","L'Oural","Volga"],
+["Quelle est la capitale constitutionnelle de la Bolivie ?","Sucre","La Paz","Cochabamba","Santa Cruz de la Sierra","Sucre","La Paz est le siège du gouvernement."],
+["Quel est le point culminant du Massif central ?","Le puy de Sancy","Le puy de Dôme","Le plomb du Cantal","Le mont Lozère","Puy de Sancy","1 885 m."],
+["Quelle est la plus grande île de la Méditerranée ?","La Sicile","La Sardaigne","Chypre","La Corse","Sicile"],
+["Quel détroit sépare l'Asie de l'Amérique ?","Le détroit de Béring","Le détroit de Magellan","Le détroit de Malacca","Le détroit de Davis","Détroit de Béring"],
+["De quel pays Naypyidaw est-elle la capitale ?","La Birmanie","Le Laos","Le Cambodge","La Thaïlande","Naypyidaw"]],
+hist:[
+["En quelle année a été signée l'ordonnance de Villers-Cotterêts ?","1539","1515","1598","1685","Ordonnance de Villers-Cotterêts","Elle impose le français dans les actes officiels."],
+["Quel roi de France est mort des suites d'un tournoi en 1559 ?","Henri II","François II","Charles IX","Henri III","Henri II (roi de France)"],
+["Quels traités de 1713 mettent fin, pour la France, à la guerre de Succession d'Espagne ?","Les traités d'Utrecht","Les traités de Westphalie","Le traité d'Aix-la-Chapelle","Le traité de Ryswick","Traités d'Utrecht"],
+["Qui était président de la République lors de l'armistice du 11 novembre 1918 ?","Raymond Poincaré","Georges Clemenceau","Paul Deschanel","Alexandre Millerand","Raymond Poincaré","Clemenceau était président du Conseil."],
+["En quelle année a eu lieu la bataille de Bouvines ?","1214","1066","1302","1356","Bataille de Bouvines"],
+["Quel nom de code porte le débarquement allié en Provence en août 1944 ?","Dragoon","Overlord","Torch","Husky","Débarquement de Provence"],
+["Quelle dynastie a succédé aux Mérovingiens ?","Les Carolingiens","Les Capétiens","Les Valois","Les Bourbons","Carolingiens"],
+["Qui fut le dernier souverain à porter le titre de « roi de France » ?","Charles X","Louis XVIII","Louis-Philippe Ier","Louis XVI","Charles X","Louis-Philippe était « roi des Français »."]],
+sci:[
+["Quel est l'élément chimique le plus abondant dans la croûte terrestre ?","L'oxygène","Le silicium","L'aluminium","Le fer","Abondance des éléments dans la croûte terrestre"],
+["Combien de paires de nerfs crâniens possède l'être humain ?","12","10","31","8","Nerf crânien"],
+["Quelle est la valeur approchée de la constante d'Avogadro ?","6,022 × 10²³ mol⁻¹","3,0 × 10⁸ mol⁻¹","6,67 × 10⁻¹¹ mol⁻¹","1,6 × 10⁻¹⁹ mol⁻¹","Nombre d'Avogadro"],
+["Autour de quelle planète tourne Ganymède, la plus grande lune du système solaire ?","Jupiter","Saturne","Neptune","Uranus","Ganymède (lune)"],
+["Quelle hormone est sécrétée par les cellules bêta du pancréas ?","L'insuline","Le glucagon","L'adrénaline","La thyroxine","Insuline"],
+["Quel chimiste a publié la classification périodique des éléments en 1869 ?","Dmitri Mendeleïev","Antoine Lavoisier","John Dalton","Niels Bohr","Dmitri Mendeleïev"],
+["Quel est le plus petit os du corps humain ?","L'étrier","Le marteau","L'enclume","Le coccyx","Étrier (os)"],
+["À combien de degrés Celsius correspond le zéro absolu ?","−273,15 °C","−459,67 °C","−100 °C","−250 °C","Zéro absolu"]],
+arts:[
+["Quel peintre a réalisé « Les Ménines » ?","Diego Velázquez","Francisco de Goya","Bartolomé Murillo","Le Greco","Les Ménines"],
+["Qui a écrit « Les Liaisons dangereuses » ?","Choderlos de Laclos","Marivaux","Denis Diderot","Le marquis de Sade","Les Liaisons dangereuses"],
+["Quel pseudonyme utilisait l'écrivain Henri Beyle ?","Stendhal","Alain","Vercors","Saint-John Perse","Stendhal"],
+["Qui a composé l'opéra « Pelléas et Mélisande » ?","Claude Debussy","Maurice Ravel","Jules Massenet","Charles Gounod","Pelléas et Mélisande (Debussy)"],
+["Quel poète a publié le recueil « Alcools » en 1913 ?","Guillaume Apollinaire","Paul Éluard","Blaise Cendrars","Louis Aragon","Alcools"],
+["Qui a peint « Le Déjeuner sur l'herbe » (1863) ?","Édouard Manet","Claude Monet","Auguste Renoir","Gustave Courbet","Le Déjeuner sur l'herbe"],
+["Quel architecte a conçu la Cité radieuse de Marseille ?","Le Corbusier","Auguste Perret","Jean Prouvé","Robert Mallet-Stevens","Cité radieuse de Marseille"],
+["Quel écrivain a refusé le prix Nobel de littérature en 1964 ?","Jean-Paul Sartre","Albert Camus","André Gide","François Mauriac","Jean-Paul Sartre"]],
+sport:[
+["Quel temps Karsten Warholm a-t-il réalisé en finale olympique du 400 m haies à Tokyo en 2021 ?","45\"94","46\"17","46\"78","45\"79","Karsten Warholm"],
+["Quelle est la masse du javelot masculin ?","800 g","600 g","700 g","1 kg","Lancer du javelot"],
+["Quelle Française a réussi le doublé 200 m – 400 m aux Jeux d'Atlanta en 1996 ?","Marie-José Pérec","Christine Arron","Muriel Hurtis","Eunice Barber","Marie-José Pérec"],
+["Quelle est la hauteur des haies du 110 m haies masculin ?","1,067 m","0,914 m","0,991 m","1,20 m","110 mètres haies"],
+["Quelle est la dernière épreuve du décathlon ?","Le 1 500 m","Le 400 m","Le lancer du javelot","Le saut à la perche","Décathlon"],
+["Dans quelle ville Renaud Lavillenie a-t-il franchi 6,16 m en février 2014 ?","Donetsk","Paris-Bercy","Clermont-Ferrand","Lyon","Renaud Lavillenie"],
+["Quel pays a remporté la première Coupe du monde de rugby en 1987 ?","La Nouvelle-Zélande","L'Australie","La France","L'Afrique du Sud","Coupe du monde de rugby à XV 1987"],
+["Quel est le diamètre du cercle de lancer du disque ?","2,50 m","2,135 m","3,00 m","2,00 m","Lancer du disque","2,135 m est le cercle du poids et du marteau."]],
+div:[
+["Quel film a reçu en 1955 la première récompense baptisée « Palme d'or » ?","Marty","Les Quatre Cents Coups","Orfeu Negro","La dolce vita","Marty (film)"],
+["Qui a réalisé « Le Mépris » (1963) ?","Jean-Luc Godard","François Truffaut","Claude Chabrol","Éric Rohmer","Le Mépris (film)"],
+["Qui a composé la musique du film « Le Mépris » ?","Georges Delerue","Michel Legrand","Maurice Jarre","Vladimir Cosma","Georges Delerue"],
+["Quel était le nom de naissance de Johnny Hallyday ?","Jean-Philippe Smet","Jean-Philippe Halliday","Jean-Pierre Smet","Claude Moine","Johnny Hallyday","Claude Moine est le vrai nom d'Eddy Mitchell."],
+["Quel film muet d'Abel Gance (1927) est célèbre pour sa projection sur trois écrans ?","Napoléon","J'accuse","La Roue","Austerlitz","Napoléon (film, 1927)"],
+["Qui a composé « Carmina Burana » ?","Carl Orff","Richard Wagner","Richard Strauss","Gustav Mahler","Carmina Burana (Orff)"],
+["Quel acteur a incarné Maigret dans la série de France 2 de 1991 à 2005 ?","Bruno Cremer","Jean Richard","Jean Gabin","Gérard Depardieu","Maigret (série télévisée, 1991)"],
+["Qui a réalisé « La Grande Illusion » (1937) ?","Jean Renoir","Marcel Carné","Julien Duvivier","Jean Vigo","La Grande Illusion"]],
+pol:[
+["Qui a été le premier chef du RAID ?","Ange Mancini","Robert Broussard","Christian Prouteau","Jean-Michel Fauvergue","https://fr.wikipedia.org/wiki/Recherche,_assistance,_intervention,_dissuasion","Commissaire, à la tête du RAID de 1985 à 1990. Prouteau a fondé le GIGN."],
+["Dans quelle commune se trouve le siège du RAID ?","Bièvres","Satory","Versailles","Nanterre","https://fr.wikipedia.org/wiki/Recherche,_assistance,_intervention,_dissuasion","Domaine de Bel-Air, Essonne."],
+["Quelle est la devise du RAID ?","Servir sans faillir","Pro patria vigilant","S'engager pour la vie","Toujours prêts","https://fr.wikipedia.org/wiki/Recherche,_assistance,_intervention,_dissuasion"],
+["Quelles unités régionales ont été intégrées au RAID à partir de 2015 ?","Les GIPN","Les BRI","Les CRS","Les BAC","https://fr.wikipedia.org/wiki/Recherche,_assistance,_intervention,_dissuasion","Les GIPN de métropole en 2015, puis ceux d'outre-mer en 2018 et 2019."],
+["Combien de brigades régionales de police mobile Clemenceau a-t-il créées en 1907 ?","12","6","8","20","https://fr.wikipedia.org/wiki/Police_nationale_(France)","Les « brigades du Tigre », le 30 décembre 1907."],
+["À partir de quelle année les premières femmes commissaires ont-elles été recrutées ?","1974","1966","1983","1958","https://fr.wikipedia.org/wiki/Police_nationale_(France)"],
+["Dans quel commissariat était affecté Jean-Baptiste Salvaing, tué à Magnanville en 2016 ?","Les Mureaux","Mantes-la-Jolie","Versailles","Rambouillet","https://en.wikipedia.org/wiki/2016_Magnanville_stabbing","Jessica Schneider travaillait au commissariat de Mantes-la-Jolie."],
+["À quel service de la préfecture de police appartenait l'auteur de l'attaque du 3 octobre 2019 ?","La DRPP (renseignement)","La DOPC (ordre public)","La DSPAP (sécurité de proximité)","La DRPJ (police judiciaire)","https://fr.wikipedia.org/wiki/Attentat_de_la_pr%C3%A9fecture_de_police_de_Paris","Il a été neutralisé par un jeune policier de la DOPC."]]
+};
+// Nouveaux niveaux : Normal = facile + moyen, Difficile = difficile, Maître = MAITRE
+for(const t of THEMES){const o=Q[t.id];Q[t.id]={1:[...o[1],...o[2]],2:o[3],3:MAITRE[t.id]}}
+
+/* ---------- Connexion sans compte (PeerJS) : le téléphone de l'animateur relaie la partie ---------- */
+const STANDALONE=typeof Peer!=='undefined';
+function peerConnect(code){
+  const hostId='quizcamemberts-'+code.toLowerCase();
+  let selfKey=null,isServer=false,conns=[],toServer=null,peerObj=null,mineP={},list={};
+  const peersL=[],connL=[];
+  const snapshot=()=>Object.entries(list).map(([k,pr])=>({peer:k,sameTab:k===selfKey,isMe:k===selfKey,presence:pr,updatedAt:Date.now(),kind:'viewer',guest:false,by:null}));
+  const emitPeers=()=>{const arr=snapshot();peersL.forEach(f=>f({peers:arr,joined:[],left:[],updated:[]}))};
+  const setConn=v=>connL.forEach(f=>f(v));
+  const broadcast=()=>{conns.forEach(c=>{try{c.open&&c.send({t:'all',list})}catch(e){}});emitPeers()};
+  const shim={
+    get isServer(){return isServer},
+    presence(patch){for(const[k,v]of Object.entries(patch)){if(v===null)delete mineP[k];else mineP[k]=v}
+      if(isServer){list[selfKey]=mineP;broadcast()}else if(toServer&&toServer.open){toServer.send({t:'me',pr:mineP})}
+      return Promise.resolve()},
+    onPeers(f){peersL.push(f);setTimeout(()=>f({peers:snapshot(),joined:[],left:[],updated:[]}));return()=>{}},
+    onConnection(f){connL.push(f);setTimeout(()=>f(true));return()=>{}},
+    leave(){try{peerObj&&peerObj.destroy()}catch(e){}}
+  };
+  return new Promise(resolve=>{
+    let done=false;const finish=v=>{if(!done){done=true;resolve(v)}};
+    setTimeout(()=>finish(null),12000);
+    const p=new Peer(hostId,{debug:0});peerObj=p;
+    p.on('open',()=>{ // l'identifiant de la partie était libre : je suis le premier, j'anime
+      isServer=true;selfKey='animateur';
+      p.on('connection',c=>{
+        c.on('open',()=>{conns.push(c);c.send({t:'all',list})});
+        c.on('data',d=>{if(d&&d.t==='me'&&d.pr&&typeof d.pr==='object'){list[c.peer]=d.pr;broadcast()}});
+        c.on('close',()=>{delete list[c.peer];conns=conns.filter(x=>x!==c);broadcast()});
+      });
+      finish(shim);
+    });
+    p.on('error',err=>{
+      if(err.type!=='unavailable-id'||isServer){if(!isServer)finish(null);return}
+      // la partie existe déjà : je la rejoins comme joueur
+      try{p.destroy()}catch(e){}
+      const q=new Peer({debug:0});peerObj=q;
+      q.on('open',myId=>{
+        selfKey=myId;toServer=q.connect(hostId,{reliable:true});
+        toServer.on('open',()=>{toServer.send({t:'me',pr:mineP});finish(shim)});
+        toServer.on('data',d=>{if(d&&d.t==='all'&&d.list){list=d.list;emitPeers()}});
+        toServer.on('close',()=>{list={};emitPeers();setConn(false)});
+      });
+      q.on('error',()=>finish(null));
+    });
+  });
+}
+
+/* ---------- Outils ---------- */
+function hash(s){let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
+function rng(seed){let a=seed;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function shuffled(arr,seedStr){const r=rng(hash(seedStr));const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function randomCode(){const L='ABCDEFGHJKLMNPQRSTUVWXYZ';let s='';for(let i=0;i<4;i++)s+=L[Math.floor(Math.random()*L.length)];return s}
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function store(k,v){try{if(v===undefined)return JSON.parse(sessionStorage.getItem(k));sessionStorage.setItem(k,JSON.stringify(v))}catch(e){return null}}
+
+/* ---------- État local ---------- */
+let me={name:(store('qc-name')||''),code:'',role:null}; // role: 'host' | 'player'
+let mine=null;   // ma progression : {score, owned:{}, ans:{seq,i,ok}}
+let game=null;   // état de partie quand je suis l'animateur
+let room=null, online=false, peers=[];
+const seen={};   // seq -> heure locale de début (chrono)
+
+function freshMine(){return{score:0,good:0,owned:{},ans:null,scored:{}}}
+function saveMine(){store('qc-mine-'+me.code,mine)}
+
+/* ---------- Synchronisation ---------- */
+function pushPresence(){
+  if(!room||!me.code)return;
+  room.presence({code:me.code,name:me.name,role:me.role,score:mine?mine.score:0,good:mine?mine.good:0,
+    owned:mine?Object.keys(mine.owned):[],ans:mine&&mine.ans?mine.ans:null,game:me.role==='host'?game:null}).catch(()=>{});
+}
+function others(){return peers.filter(p=>!p.sameTab&&p.presence&&p.presence.code===me.code&&p.presence.name)}
+function hostPeer(){const h=others().filter(p=>p.presence.role==='host'&&p.presence.game);
+  h.sort((a,b)=>(a.presence.game.created||0)-(b.presence.game.created||0));return h[0]||null}
+function currentGame(){return me.role==='host'?game:(hostPeer()?.presence.game||null)}
+function roster(){
+  const list=others().filter(p=>p.presence.role).map(p=>({id:p.peer,name:p.presence.name,score:+p.presence.score||0,good:+p.presence.good||0,
+    host:p.presence.role==='host',ans:p.presence.ans,me:false}));
+  list.push({id:'me',name:me.name,score:mine?mine.score:0,good:mine?mine.good:0,host:me.role==='host',ans:mine?mine.ans:null,me:true});
+  return list;
+}
+
+/* ---------- Animateur ---------- */
+function hostNewGame(level,total){
+  game={created:Date.now(),level,total,seq:0,phase:'lobby',theme:null,lvl:null,qi:null,used:[]};
+}
+function hostNextQuestion(){
+  const pool=[];
+  for(const t of THEMES)for(const l of [+game.level])
+    Q[t.id][l].forEach((_,i)=>{const k=t.id+l+'_'+i;if(!game.used.includes(k))pool.push({t:t.id,l,i,k})});
+  if(!pool.length||game.seq>=game.total){game.phase='end';sync();return}
+  const th=pick([...new Set(pool.map(p=>p.t))]);            // thème tiré au hasard
+  const q=pick(pool.filter(p=>p.t===th));
+  game.used.push(q.k);
+  Object.assign(game,{seq:game.seq+1,phase:'question',theme:q.t,lvl:q.l,qi:q.i,startedAt:Date.now()});
+  sync();
+}
+function hostReveal(){if(game&&game.phase==='question'){game.phase='reveal';game.revealedAt=Date.now();sync()}}
+function hostTick(){
+  if(me.role!=='host'||!game)return;
+  if(game.phase==='question'){
+    const players=roster();
+    const all=players.every(p=>p.ans&&p.ans.seq===game.seq);
+    if(Date.now()-game.startedAt>=DUR||all)hostReveal();
+  } else if(game.phase==='reveal'&&Date.now()-game.revealedAt>=REVEAL_AUTO){hostNextQuestion()}
+}
+function sync(){store('qc-game-'+me.code,game);pushPresence();render()}
+
+/* ---------- Joueur ---------- */
+function questionOf(g){
+  const q=Q[g.theme][g.lvl][g.qi];
+  return{text:q[0],good:q[1],opts:shuffled(q.slice(1,5),me.code+'|'+g.seq+'|'+g.theme+g.lvl+g.qi),src:q[5],note:q[6]||''};
+}
+function answer(i){
+  const g=currentGame();if(!g||g.phase!=='question')return;
+  if(mine.ans&&mine.ans.seq===g.seq)return;
+  const q=questionOf(g);const ok=q.opts[i]===q.good;
+  mine.ans={seq:g.seq,i,ok};
+  if(ok&&!mine.scored[g.seq]){mine.scored[g.seq]=1;mine.score+=LEVELS[g.lvl].pts;mine.good++;mine.owned[g.theme]=1}
+  saveMine();pushPresence();render();
+}
+
+/* ---------- Rendu ---------- */
+const app=document.getElementById('app');
+let lastHtml='';
+function wheel(cls=''){
+  let p='';
+  THEMES.forEach((t,i)=>{
+    const st=360/N,a0=(-90+i*st)*Math.PI/180,a1=(-90+(i+1)*st)*Math.PI/180,r=46;
+    const x0=50+r*Math.cos(a0),y0=50+r*Math.sin(a0),x1=50+r*Math.cos(a1),y1=50+r*Math.sin(a1);
+    const own=mine&&mine.owned[t.id];
+    p+=`<path d="M50 50L${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 0 1 ${x1.toFixed(2)} ${y1.toFixed(2)}Z" fill="${own?`var(--${t.id})`:'var(--track)'}" stroke="var(--bg)" stroke-width="2.5" stroke-linejoin="round"/>`;
+  });
+  const n=mine?Object.keys(mine.owned).length:0;
+  return `<svg class="wheel ${cls}" viewBox="0 0 100 100" role="img" aria-label="${n} camemberts sur ${N}"><circle cx="50" cy="50" r="48.5" fill="var(--surface)"/>${p}<circle cx="50" cy="50" r="7" fill="var(--surface)" stroke="var(--bg)" stroke-width="2"/></svg>`;
+}
+let connErr=false;
+function statusLine(){
+  if(STANDALONE&&!me.role)return connErr?`<div class="status"><i style="background:var(--ko)"></i>Connexion impossible. Vérifie Internet puis réessaie.</div>`:`<div class="status on"><i></i>Aucun compte nécessaire</div>`;
+  if(STANDALONE&&me.role&&!online)return `<div class="status"><i style="background:var(--ko)"></i>Connexion perdue avec l'animateur</div>`;
+  const n=others().filter(p=>p.presence.role).length;
+  return online?`<div class="status on"><i></i>En ligne${me.code?` · ${n+1} joueur${n?'s':''} dans la partie ${esc(me.code)}`:''}</div>`
+    :`<div class="status"><i></i>Hors ligne : partie seule sur ce téléphone</div>`;
+}
+function playerList(g,mode){
+  const list=roster().sort((a,b)=>mode==='lobby'?0:b.score-a.score);
+  return `<ul class="players">${list.map((p,k)=>{
+    let mark='';
+    if(mode==='q'){const done=p.ans&&p.ans.seq===g.seq;mark=`<span class="mark ${done?'ok':''}">${done?'✓':''}</span>`}
+    if(mode==='r'){const a=p.ans&&p.ans.seq===g.seq?p.ans:null;mark=`<span class="mark ${a?(a.ok?'ok':'ko'):''}">${a?(a.ok?'✓':'✗'):'–'}</span>`}
+    return `<li class="${p.me?'me':''}">${mode==='lobby'?'':`<span class="rk">${k+1}</span>`}<span class="nm">${esc(p.name)}${p.me?' <span class="tag">toi</span>':''}${p.host?' <span class="tag">animateur</span>':''}</span>${mode==='lobby'?'':`<span class="pt">${p.score}</span>`}${mark}</li>`}).join('')}</ul>`;
+}
+
+function viewHome(){
+  return `<header class="hero">${wheel()}<h1>Quiz des Camemberts</h1>
+    <p class="muted">Tout le monde répond à la même question en même temps. Le thème est tiré au hasard à chaque question.</p></header>
+  <section class="panel">
+    <div class="field"><label class="label" for="name">Ton pseudo</label>
+      <input type="text" id="name" maxlength="18" placeholder="ex. Alex" value="${esc(me.name)}"></div>
+    <div class="field"><label class="label" for="code">Code de partie</label>
+      <input type="text" id="code" class="code" maxlength="8" value="${esc(me.code||store('qc-lastcode')||randomCode())}" autocapitalize="characters" autocomplete="off">
+      <small class="muted">Tout le monde tape le même code. Le premier entré anime la partie et choisit le niveau.</small></div>
+    <button class="btn" data-act="enter">Entrer dans la partie</button>
+    ${statusLine()}
+  </section>
+  <section class="panel"><h3>Règles</h3>
+    <p>Le premier joueur entré choisit le niveau, fixe pour toute la partie : Normal (1 pt), Difficile (2 pts) ou Maître (3 pts), avec des questions très pointues. 20 secondes par question. Chaque bonne réponse colore le camembert du thème. Le plus de points à la fin gagne. Une source s'affiche après chaque question pour vérifier.</p></section>`;
+}
+function viewLobby(){
+  const host=me.role==='host';
+  const h=hostPeer();
+  const lv=game?String(game.level):'1',tot=game?game.total:10;
+  return `<div class="topbar"><div><div class="label">Partie</div><div class="code">${esc(me.code)}</div></div>${statusLine()}</div>
+  ${host?`<section class="panel"><h2>Réglages</h2>
+    <div class="field"><span class="label">Niveau pour toute la partie</span><div class="seg" role="group">
+      ${[['1','Normal'],['2','Difficile'],['3','Maître']].map(([v,l])=>`<button data-lv="${v}" aria-pressed="${lv===v}">${l}</button>`).join('')}</div></div>
+    <div class="field"><span class="label">Nombre de questions</span><div class="seg" role="group">
+      ${[10,15,20,30].map(n=>`<button data-tot="${n}" aria-pressed="${tot===n}">${n}</button>`).join('')}</div></div>
+    <button class="btn" data-act="start">Lancer la partie</button></section>`
+  :`<section class="panel center"><h2>${h?`${esc(h.presence.name)} va lancer la partie`:'En attente de l\'animateur'}</h2>
+    <p class="muted">${h?`Niveau choisi : <b>${LEVELS[h.presence.game.level].name}</b>. Reste sur cette page, la première question arrive bientôt.`:`Personne n'anime encore la partie ${esc(me.code)}. Vérifie le code avec l'animateur.`}</p></section>`}
+  <section class="panel"><h3>Joueurs connectés</h3>${playerList(null,'lobby')}</section>
+  <button class="link" data-act="leave">Quitter</button>`;
+}
+function viewQuestion(g){
+  const q=questionOf(g),th=THEMES.find(t=>t.id===g.theme);
+  const my=mine.ans&&mine.ans.seq===g.seq?mine.ans:null;
+  const reveal=g.phase==='reveal';
+  const answers=q.opts.map((o,i)=>{
+    let cls='';if(reveal){if(o===q.good)cls='good';else if(my&&my.i===i)cls='bad'}else if(my&&my.i===i)cls='pick';
+    return `<button class="ans ${cls}" data-i="${i}" ${my||reveal?'disabled':''}><span class="k">${'ABCD'[i]}</span><span>${esc(o)}</span></button>`}).join('');
+  let after='';
+  if(reveal){
+    const href=/^https?:/.test(q.src)?q.src:'https://fr.wikipedia.org/w/index.php?title=Sp%C3%A9cial:Recherche&go=Consulter&search='+encodeURIComponent(q.src);
+    const lab=/^https?:/.test(q.src)?new URL(q.src).hostname.replace(/^www\./,''):'Wikipédia : '+q.src;
+    const ok=my&&my.ok;
+    after=`<div class="verdict ${ok?'ok':'ko'}">${ok?`Bonne réponse ! +${LEVELS[g.lvl].pts} pt${g.lvl>1?'s':''}`:(my?'Raté':'Pas de réponse')}
+      ${ok?'':`<span>La réponse était : ${esc(q.good)}.</span>`}${q.note?`<span>${esc(q.note)}</span>`:''}
+      <span class="src">Source : <a href="${esc(href)}" target="_blank" rel="noopener">${esc(lab)}</a></span></div>
+      ${me.role==='host'?`<button class="btn" data-act="next">${g.seq>=g.total?'Voir le classement':'Question suivante'}</button><small class="muted center">Passage automatique au bout de 12 s.</small>`:'<p class="wait">L\'animateur va passer à la question suivante.</p>'}
+      <section class="panel"><h3>Classement</h3>${playerList(g,'r')}</section>`;
+  } else {
+    after=my?`<p class="wait">Réponse enregistrée. On attend les autres…</p>`:'';
+    after+=`<section class="panel"><h3>Ont répondu</h3>${playerList(g,'q')}</section>`;
+  }
+  return `<div class="topbar"><div><div class="label">Question ${g.seq} / ${g.total}</div><div class="score">${mine.score} pts</div></div>${wheel('').replace('class="wheel ','class="wheel" style="width:64px;height:64px" data-x="')}</div>
+  <div class="qhead" style="--c:var(--${g.theme})"><span class="chip">${th.name}</span><span class="chip plain">${LEVELS[g.lvl].name} · ${LEVELS[g.lvl].pts} pt${g.lvl>1?'s':''}</span></div>
+  ${reveal?'':`<div class="timer" style="--c:var(--${g.theme})"><i id="bar"></i></div>`}
+  <p class="qtext">${esc(q.text)}</p>
+  <div class="answers">${answers}</div>${after}`;
+}
+function viewEnd(g){
+  const list=roster().sort((a,b)=>b.score-a.score);
+  const rank=list.findIndex(p=>p.me)+1;
+  return `<header class="hero">${wheel('big')}<h1>${rank===1?'Victoire !':'Partie terminée'}</h1>
+    <p class="podium">${rank}${rank===1?'er':'e'} sur ${list.length} · ${mine.score} pts</p></header>
+  <section class="panel"><h3>Classement final</h3>${playerList(g,'end')}</section>
+  ${me.role==='host'?'<button class="btn" data-act="again">Nouvelle partie avec les mêmes joueurs</button>':'<p class="wait">L\'animateur peut relancer une partie.</p>'}
+  <button class="link" data-act="leave">Quitter</button>`;
+}
+
+function render(){
+  let html;
+  if(!me.role)html=viewHome();
+  else{
+    // deux animateurs entrés en même temps : le plus ancien garde la main
+    const hp=hostPeer();if(me.role==='host'&&game&&game.phase==='lobby'&&hp&&hp.presence.game.created<game.created){me.role='player';game=null;pushPresence()}
+    const g=currentGame();
+    if(g&&me.role==='player'&&mine.gameId!==g.created){mine=freshMine();mine.gameId=g.created;saveMine();pushPresence()}
+    if(!g||g.phase==='lobby')html=viewLobby();
+    else if(g.phase==='end')html=viewEnd(g);
+    else html=viewQuestion(g);
+  }
+  if(html===lastHtml)return;
+  const typing=document.activeElement&&document.activeElement.tagName==='INPUT';
+  if(typing&&!me.role)return; // ne pas effacer la saisie de l'accueil
+  const scroll=html.slice(0,80)!==lastHtml.slice(0,80);
+  lastHtml=html;app.innerHTML=html;tick();
+  if(scroll&&me.role)window.scrollTo(0,0);
+}
+function tick(){
+  hostTick();
+  const g=currentGame(),bar=document.getElementById('bar');
+  if(g&&g.phase==='question'){
+    if(!seen[g.seq])seen[g.seq]=me.role==='host'?g.startedAt:Date.now();
+    if(bar)bar.style.setProperty('--k',Math.max(0,1-(Date.now()-seen[g.seq])/DUR));
+  }
+}
+setInterval(()=>{tick();if(me.role==='player')render()},250);
+
+app.addEventListener('click',async e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.i!==undefined){answer(+b.dataset.i);return}
+  if(b.dataset.lv){game.level=b.dataset.lv;sync();return}
+  if(b.dataset.tot){game.total=+b.dataset.tot;sync();return}
+  const act=b.dataset.act;
+  if(act==='enter'){
+    me.name=(document.getElementById('name').value.trim()||'Joueur').slice(0,18);
+    me.code=(document.getElementById('code').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'')||randomCode());
+    store('qc-name',me.name);store('qc-lastcode',me.code);
+    b.disabled=true;b.textContent='Connexion…';
+    if(STANDALONE){
+      room=await peerConnect(me.code);
+      if(!room){b.disabled=false;b.textContent='Entrer dans la partie';connErr=true;lastHtml='';render();return}
+      connErr=false;online=true;room.onPeers(ch=>{peers=ch.peers;render()});room.onConnection(c=>{online=c;lastHtml='';render()});
+      me.role=room.isServer?'host':'player';
+    } else {
+    for(let k=0;k<12&&room&&(!online||!peers.length);k++)await new Promise(r=>setTimeout(r,250));
+    if(room&&online)await new Promise(r=>setTimeout(r,600)); // laisse arriver les autres joueurs
+    me.role=hostPeer()?'player':'host';
+    }
+    mine=store('qc-mine-'+me.code)||freshMine();
+    if(me.role==='host'){game=store('qc-game-'+me.code);if(!game||game.phase==='end'){hostNewGame('1',10);mine=freshMine()}}
+    lastHtml='';sync();return;
+  }
+  if(act==='start'){mine=freshMine();mine.gameId=game.created;saveMine();hostNextQuestion();return}
+  if(act==='next'){hostNextQuestion();return}
+  if(act==='again'){const lv=game.level,tot=game.total;hostNewGame(lv,tot);mine=freshMine();mine.gameId=game.created;saveMine();sync();return}
+  if(act==='leave'){me.role=null;game=null;if(STANDALONE){room&&room.leave();room=null;online=false;peers=[]}else room&&room.presence({code:null,role:null,game:null,ans:null}).catch(()=>{});lastHtml='';render();return}
+});
+
+render();
+(async()=>{
+  try{room=await window.claude?.use?.('room')}catch(e){room=null}
+  if(!room)return;
+  room.onConnection(c=>{online=c;lastHtml='';render()},()=>{online=false;room=null;lastHtml='';render()});
+  room.onPeers(ch=>{peers=ch.peers;render()});
+  pushPresence();
+})();
+</script>
